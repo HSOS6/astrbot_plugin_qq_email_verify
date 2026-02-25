@@ -26,6 +26,26 @@ class QQEmailVerifyPlugin(Star):
         # }
         self.pending_verifications: Dict[str, Dict[str, Any]] = {}
 
+    def _is_group_enabled(self, group_id: str) -> bool:
+        """检查群是否启用验证"""
+        whitelist = self.config.get("whitelist_groups", [])
+        blacklist = self.config.get("blacklist_groups", [])
+        
+        # 转换为字符串集合
+        whitelist_set = {str(g) for g in whitelist if str(g).strip()}
+        blacklist_set = {str(g) for g in blacklist if str(g).strip()}
+        
+        # 白名单模式
+        if whitelist_set:
+            return group_id in whitelist_set
+            
+        # 黑名单模式
+        if blacklist_set:
+            return group_id not in blacklist_set
+            
+        # 默认启用
+        return True
+
     def _generate_code(self) -> str:
         """生成6位随机数字验证码"""
         return str(random.randint(100000, 999999))
@@ -139,6 +159,10 @@ class QQEmailVerifyPlugin(Star):
             user_id = str(raw.get("user_id"))
             group_id = str(raw.get("group_id"))
             
+            # 检查群是否启用验证
+            if not self._is_group_enabled(group_id):
+                return
+            
             # 忽略机器人自己
             if user_id == str(event.get_self_id()):
                 return
@@ -189,6 +213,10 @@ class QQEmailVerifyPlugin(Star):
             user_id = str(raw.get("user_id"))
             group_id = str(raw.get("group_id"))
             
+            # 检查群是否启用验证 (虽然理论上不在验证列表就不会处理，但为了严谨)
+            if not self._is_group_enabled(group_id):
+                return
+            
             # 检查是否在待验证列表
             if user_id not in self.pending_verifications:
                 return
@@ -222,6 +250,10 @@ class QQEmailVerifyPlugin(Star):
         user_id = str(event.get_sender_id())
         group_id = str(event.get_group_id())
         
+        # 检查群是否启用
+        if not self._is_group_enabled(group_id):
+            return
+
         if user_id not in self.pending_verifications:
             # 仅在用户确实在待验证状态时响应，或者忽略
             # 为了避免干扰正常聊天，如果不在待验证列表，可以选择不回复或回复提示

@@ -64,5 +64,21 @@
     "description": "踢出提示语",
     "type": "string",
     "default": "{at_user} 验证超时，您已被移出群聊。"
+  },
+  "blacklist_groups": {
+    "description": "黑名单群号列表 (在这些群不开启验证，多个用逗号分隔)",
+    "type": "list",
+    "items": {
+      "type": "string"
+    },
+    "default": []
+  },
+  "whitelist_groups": {
+    "description": "白名单群号列表 (仅在这些群开启验证，优先级高于黑名单，多个用逗号分隔)",
+    "type": "list",
+    "items": {
+      "type": "string"
+    },
+    "default": []
   }
 }
