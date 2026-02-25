@@ -40,18 +40,16 @@
 
 ---
 
-## 🔑 QQ邮箱 SMTP 授权码获取教程
+## 🔑 QQ邮箱 SMTP 授权码获取
 
-如果你使用 QQ 邮箱作为发件邮箱，**不能使用 QQ 密码**，必须使用**授权码**。
+如果你使用 QQ 邮箱作为发件邮箱，**不是 QQ 密码！！！**，必须使用**授权码**。
+### 参照图片操作
+1.  <img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/35152102-54cb-4779-8961-cfe0b1b60528" />
 
-1.  **登录邮箱**：在浏览器中登录 [QQ邮箱网页版](https://mail.qq.com)。
-2.  **进入设置**：点击页面顶部的 **「设置」**，然后选择 **「账户」** 选项卡。
-3.  **开启服务**：向下滚动，找到 **「POP3/IMAP/SMTP/Exchange/CardDAV/CalDAV服务」** 区域。
-4.  **生成授权码**：
-    *   找到 **「POP3/SMTP服务」** 或 **「IMAP/SMTP服务」**，点击右侧的 **「开启」**（如果已开启，可点击 **「管理服务」** -> **「生成授权码」**）。
-    *   按照提示进行短信验证或扫码验证。
-    *   验证通过后，页面会显示一串 **16位字母**，这就是你的 **授权码**。
-5.  **填入配置**：将这串授权码复制并粘贴到插件配置的 `password` 字段中。
+2.  <img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/37a7b775-a2ca-410a-ab65-6d1ab9ddb991" />
+
+3.  根据提示发送验证码后，就获取到了授权码
+<img width="1916" height="1079" alt="屏幕截图 2026-02-25 230217" src="https://github.com/user-attachments/assets/e855644a-63b7-4680-9798-f8dfae5f8071" />
 
 ---
 
