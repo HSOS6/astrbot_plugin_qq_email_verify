@@ -1,0 +1,68 @@
+{
+  "smtp_host": {
+    "description": "SMTP服务器地址 (如 smtp.qq.com)",
+    "type": "string",
+    "default": "smtp.qq.com"
+  },
+  "smtp_port": {
+    "description": "SMTP端口 (SSL通常为465)",
+    "type": "int",
+    "default": 465
+  },
+  "username": {
+    "description": "SMTP用户名 (通常为邮箱地址)",
+    "type": "string",
+    "default": ""
+  },
+  "password": {
+    "description": "SMTP密码 (QQ邮箱为授权码)",
+    "type": "string",
+    "default": "",
+    "is_password": true
+  },
+  "use_ssl": {
+    "description": "是否使用SSL加密",
+    "type": "bool",
+    "default": true
+  },
+  "from_address": {
+    "description": "发件人邮箱地址",
+    "type": "string",
+    "default": ""
+  },
+  "from_display_name": {
+    "description": "发件人显示名称",
+    "type": "string",
+    "default": "AstrBot验证助手"
+  },
+  "kick_delay_seconds": {
+    "description": "验证超时踢出时间(秒)",
+    "type": "int",
+    "default": 300
+  },
+  "verify_email_subject": {
+    "description": "验证邮件主题",
+    "type": "string",
+    "default": "入群验证码"
+  },
+  "verify_email_template": {
+    "description": "验证邮件内容模板 (支持HTML, {code}为验证码, {group_name}为群名, {group_id}为群号, {timeout}为超时分钟)",
+    "type": "text",
+    "default": "<p>欢迎加入 <b>{group_name}</b> ({group_id})！</p><p>您的验证码是：<b>{code}</b></p><p>请于 {timeout} 分钟内在群内回复此6位验证码以完成验证。</p>"
+  },
+  "welcome_msg_template": {
+    "description": "群内欢迎提示语 ({at_user}为@用户占位符, {timeout}为超时时间(分钟))",
+    "type": "string",
+    "default": "{at_user} 欢迎入群！验证码已发送至您的QQ邮箱，请查看您的邮箱，在{timeout}分钟内回复验证码，否则将被移出群聊！"
+  },
+  "verify_success_msg": {
+    "description": "验证成功提示语",
+    "type": "string",
+    "default": "{at_user} 验证通过，欢迎加入！"
+  },
+  "kick_msg_template": {
+    "description": "踢出提示语",
+    "type": "string",
+    "default": "{at_user} 验证超时，您已被移出群聊。"
+  }
+}

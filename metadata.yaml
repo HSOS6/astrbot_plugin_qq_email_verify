@@ -1,0 +1,8 @@
+name: astrbot_plugin_qq_email_verify
+display_name: 入群验证但是邮箱
+desc: 新人进群自动发送QQ邮件验证码，超时未验证自动踢出
+version: v1.0.beta
+author: 5060ti个马力的6999
+repo: https://github.com/User/astrbot_plugin_qq_email_verify 
+support_platforms:
+  - aiocqhttp
