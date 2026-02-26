@@ -39,6 +39,7 @@
 | **blacklist_groups** | 黑名单群号 (在这些群不启用) | `[]` |
 
 > 备注 验证邮件内容模板： (支持HTML, {code}为验证码, {group_name}为群名, {group_id}为群号, {timeout}为超时分钟)
+> 
 > 群内欢迎提示语: ({at_user}为@用户占位符, {timeout}为超时时间(分钟))
 ---
 > **注意**：
