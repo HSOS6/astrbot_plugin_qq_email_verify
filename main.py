@@ -2,46 +2,120 @@ import asyncio
 import random
 import smtplib
 import ssl
+import re
+import json
+import time
 from email.message import EmailMessage
 from email.utils import formataddr
 from typing import Dict, Any, Optional
+from pathlib import Path
 
 from astrbot.api.event import filter, AstrMessageEvent
-from astrbot.api.star import Context, Star, register
+from astrbot.api.star import Context, Star, StarTools, register
 from astrbot.api import logger
 import astrbot.api.message_components as Comp
 
-@register("qq_email_verify", "5060ti个马力的6999", "入群验证但是邮箱", "1.0beta", "https://github.com/HSOS6/astrbot_plugin_qq_email_verify")
+@register("qq_email_verify", "5060ti个马力的6999", "入群验证但是邮箱", "1.1.0", "https://github.com/HSOS6/astrbot_plugin_qq_email_verify")
 class QQEmailVerifyPlugin(Star):
     def __init__(self, context: Context, config: Dict[str, Any]):
         super().__init__(context)
         self.config = config
+        
+        # 数据持久化配置
+        self.data_dir = Path(StarTools.get_data_dir("qq_email_verify"))
+        if not self.data_dir.exists():
+            self.data_dir.mkdir(parents=True, exist_ok=True)
+        self.data_file = self.data_dir / "verifications.json"
+        
         # pending_verifications structure:
         # {
         #   "user_id": {
         #       "group_id": str,
-        #       "codes": set,  # Modified: store multiple valid codes
-        #       "task": asyncio.Task
+        #       "codes": set,
+        #       "join_time": float,
+        #       "task": asyncio.Task (only for active session)
         #   }
         # }
-        self.pending_verifications: Dict[str, Dict[str, Any]] = {}
+        self.pending_verifications: Dict[str, Dict[str, Any]] = self._load_data()
+        
+        # 预加载配置
+        self.whitelist_groups = set()
+        self.blacklist_groups = set()
+        self.kick_delay_seconds = 300
+        self._load_config()
+        
+        # 为恢复的状态启动踢出任务
+        self._resume_tasks()
+
+    def _load_data(self) -> Dict[str, Any]:
+        """从文件加载持久化数据"""
+        if self.data_file.exists():
+            try:
+                with open(self.data_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    # 将 codes 转换回 set
+                    for uid in data:
+                        data[uid]['codes'] = set(data[uid]['codes'])
+                    return data
+            except Exception as e:
+                logger.error(f"[QQEmailVerify] 加载持久化数据失败: {e}")
+        return {}
+
+    def _save_data(self):
+        """保存数据到文件"""
+        try:
+            # 准备可序列化的副本
+            save_data = {}
+            for uid, info in self.pending_verifications.items():
+                save_data[uid] = {
+                    "group_id": info["group_id"],
+                    "codes": list(info["codes"]),
+                    "join_time": info.get("join_time", time.time())
+                }
+            with open(self.data_file, 'w', encoding='utf-8') as f:
+                json.dump(save_data, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            logger.error(f"[QQEmailVerify] 保存持久化数据失败: {e}")
+
+    def _resume_tasks(self):
+        """为加载的状态恢复踢出任务"""
+        now = time.time()
+        for uid, info in list(self.pending_verifications.items()):
+            join_time = info.get("join_time", now)
+            elapsed = now - join_time
+            remaining = self.kick_delay_seconds - elapsed
+            
+            if remaining <= 0:
+                # 已过期，立即启动一个踢出任务
+                info["task"] = asyncio.create_task(self._kick_task(uid, info["group_id"], delay=0))
+            else:
+                info["task"] = asyncio.create_task(self._kick_task(uid, info["group_id"], delay=remaining))
+
+    async def terminate(self):
+        """插件销毁时保存数据"""
+        self._save_data()
+        # 取消所有正在运行的任务
+        for info in self.pending_verifications.values():
+            if "task" in info and not info["task"].done():
+                info["task"].cancel()
+
+    def _load_config(self):
+        """加载配置"""
+        whitelist = self.config.get("whitelist_groups", [])
+        blacklist = self.config.get("blacklist_groups", [])
+        self.whitelist_groups = {str(g).strip() for g in whitelist if str(g).strip()}
+        self.blacklist_groups = {str(g).strip() for g in blacklist if str(g).strip()}
+        self.kick_delay_seconds = int(self.config.get("kick_delay_seconds", 300))
 
     def _is_group_enabled(self, group_id: str) -> bool:
         """检查群是否启用验证"""
-        whitelist = self.config.get("whitelist_groups", [])
-        blacklist = self.config.get("blacklist_groups", [])
-        
-        # 转换为字符串集合
-        whitelist_set = {str(g) for g in whitelist if str(g).strip()}
-        blacklist_set = {str(g) for g in blacklist if str(g).strip()}
-        
         # 白名单模式
-        if whitelist_set:
-            return group_id in whitelist_set
+        if self.whitelist_groups:
+            return group_id in self.whitelist_groups
             
         # 黑名单模式
-        if blacklist_set:
-            return group_id not in blacklist_set
+        if self.blacklist_groups:
+            return group_id not in self.blacklist_groups
             
         # 默认启用
         return True
@@ -106,11 +180,14 @@ class QQEmailVerifyPlugin(Star):
         else:
             logger.error(f"[QQEmailVerify] 邮件发送失败 -> {to_email}")
 
-    async def _kick_task(self, user_id: str, group_id: str):
+    async def _kick_task(self, user_id: str, group_id: str, delay: Optional[int] = None):
         """超时踢出任务"""
-        delay = int(self.config.get("kick_delay_seconds", 300))
+        if delay is None:
+            delay = self.kick_delay_seconds
+        
         try:
-            await asyncio.sleep(delay)
+            if delay > 0:
+                await asyncio.sleep(delay)
             
             # 检查是否仍在待验证列表
             if user_id in self.pending_verifications:
@@ -132,6 +209,7 @@ class QQEmailVerifyPlugin(Star):
                 # 清理状态
                 if user_id in self.pending_verifications:
                     del self.pending_verifications[user_id]
+                    self._save_data() # 保存变更
                     
         except asyncio.CancelledError:
             logger.info(f"[QQEmailVerify] 用户 {user_id} 验证任务已取消（验证通过或离开）")
@@ -180,8 +258,10 @@ class QQEmailVerifyPlugin(Star):
             self.pending_verifications[user_id] = {
                 "group_id": group_id,
                 "codes": {code},
+                "join_time": time.time(),
                 "task": task
             }
+            self._save_data() # 保存状态
             
             # 获取群名
             group_name = group_id
@@ -206,6 +286,7 @@ class QQEmailVerifyPlugin(Star):
             if user_id in self.pending_verifications:
                 self.pending_verifications[user_id]["task"].cancel()
                 del self.pending_verifications[user_id]
+                self._save_data() # 保存状态
                 logger.info(f"[QQEmailVerify] 待验证用户 {user_id} 退群，清理状态")
 
         # 处理群消息 (验证)
@@ -235,6 +316,7 @@ class QQEmailVerifyPlugin(Star):
                 # 取消超时任务
                 verification["task"].cancel()
                 del self.pending_verifications[user_id]
+                self._save_data() # 保存状态
                 
                 # 发送成功提示
                 success_tmpl = self.config.get("verify_success_msg", "{at_user} 验证通过，欢迎加入！")
@@ -242,6 +324,9 @@ class QQEmailVerifyPlugin(Star):
                 await event.bot.call_action("send_group_msg", group_id=group_id, message=success_msg)
                 
                 # 停止事件继续传播 (可选，防止触发其他指令)
+                event.stop_event()
+            else:
+                # 拦截待验证用户的所有其他消息，防止刷屏或触发其他指令
                 event.stop_event()
 
     @filter.command("验证码", alias={"验证码重发"})
@@ -265,12 +350,17 @@ class QQEmailVerifyPlugin(Star):
             yield event.plain_result("请在申请入群的群聊中使用此指令。")
             return
 
+        # 邮箱格式验证
+        target_email = email.strip() if email else f"{user_id}@qq.com"
+        email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_regex, target_email):
+            yield event.plain_result(f"邮箱格式不正确: {target_email}")
+            return
+
         # 生成新验证码
         new_code = self._generate_code()
         verification["codes"].add(new_code)
-        
-        # 确定目标邮箱
-        target_email = email.strip() if email else f"{user_id}@qq.com"
+        self._save_data() # 保存状态
         
         # 获取群名
         group_name = group_id

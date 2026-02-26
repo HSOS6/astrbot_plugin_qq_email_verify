@@ -1,7 +1,7 @@
 name: astrbot_plugin_qq_email_verify
 display_name: 入群验证但是邮箱
-desc: 这是一个为 AstrBot 设计的 QQ 群入群验证插件。当新成员加入群聊时，插件会自动向其 QQ 邮箱（QQ号@qq.com）发送包含 6 位数字验证码的邮件。用户需要在规定时间内在群聊中发送正确的验证码以完成验证，否则将被自动移出群聊。
-version: v1.0.beta
+desc: 新人进群自动发送QQ邮件验证码，超时未验证自动踢出
+version: v1.1.0
 author: 5060ti个马力的6999
 repo: https://github.com/HSOS6/astrbot_plugin_qq_email_verify
 support_platforms:
