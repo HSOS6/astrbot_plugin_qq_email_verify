@@ -1,4 +1,4 @@
-# AstrBot QQ邮箱入群验证插件 (astrbot_plugin_qq_email_verify)
+# [AstrBot QQ邮箱入群验证插件 (astrbot_plugin_qq_email_verify)](https://github.com/HSOS6/astrbot_plugin_qq_email_verify)
 
 ## 📖 简介
 
