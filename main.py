@@ -15,7 +15,7 @@ from astrbot.api.star import Context, Star, StarTools, register
 from astrbot.api import logger
 import astrbot.api.message_components as Comp
 
-@register("qq_email_verify", "5060ti个马力的6999", "入群验证但是邮箱", "1.1.0", "https://github.com/HSOS6/astrbot_plugin_qq_email_verify")
+@register("qq_email_verify", "5060ti个马力的6999", "入群验证但是邮箱", "1.2.0", "https://github.com/HSOS6/astrbot_plugin_qq_email_verify")
 class QQEmailVerifyPlugin(Star):
     def __init__(self, context: Context, config: Dict[str, Any]):
         super().__init__(context)
@@ -326,6 +326,11 @@ class QQEmailVerifyPlugin(Star):
                 # 停止事件继续传播 (可选，防止触发其他指令)
                 event.stop_event()
             else:
+                # 检查是否是重发指令，如果是则放行
+                # 简单的字符串匹配，允许指令通过拦截
+                if msg_text.strip().startswith(("/验证码", "验证码", "／验证码")):
+                    return
+
                 # 拦截待验证用户的所有其他消息，防止刷屏或触发其他指令
                 event.stop_event()
 
