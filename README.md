@@ -37,10 +37,15 @@
 | **welcome_msg_template** | 群内欢迎语模板 | (见默认配置) |
 | **whitelist_groups** | 白名单群号 (仅在这些群启用，优先级高) | `[]` |
 | **blacklist_groups** | 黑名单群号 (在这些群不启用) | `[]` |
+| **enable_timeout_reminder** | 是否开启超时提醒 | `True` |
+| **timeout_reminder_seconds** | 超时前多少秒发送提醒 | `60` |
+| **timeout_reminder_msg** | 超时提醒内容模板 | (见默认配置) |
 
 > 备注 验证邮件内容模板： (支持HTML, {code}为验证码, {group_name}为群名, {group_id}为群号, {timeout}为超时分钟)
 > 
 > 群内欢迎提示语: ({at_user}为@用户占位符, {timeout}为超时时间(分钟))
+>
+> 超时提醒内容模板: ({at_user}为@用户占位符, {remaining}为剩余秒数)
 ---
 > **注意**：
 > 1. 如果配置了 `whitelist_groups`，则**只有**白名单内的群会开启验证，忽略黑名单。
