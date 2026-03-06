@@ -15,7 +15,7 @@ from astrbot.api.star import Context, Star, StarTools, register
 from astrbot.api import logger
 import astrbot.api.message_components as Comp
 
-@register("qq_email_verify", "5060ti个马力的6999", "入群验证但是邮箱", "1.2.0", "https://github.com/HSOS6/astrbot_plugin_qq_email_verify")
+@register("qq_email_verify", "5060ti个马力的6999", "入群验证但是邮箱", "1.3.0", "https://github.com/HSOS6/astrbot_plugin_qq_email_verify")
 class QQEmailVerifyPlugin(Star):
     def __init__(self, context: Context, config: Dict[str, Any]):
         super().__init__(context)
@@ -70,7 +70,8 @@ class QQEmailVerifyPlugin(Star):
                 save_data[uid] = {
                     "group_id": info["group_id"],
                     "codes": list(info["codes"]),
-                    "join_time": info.get("join_time", time.time())
+                    "join_time": info.get("join_time", time.time()),
+                    "welcome_msg_id": info.get("welcome_msg_id") # 保存 welcome_msg_id
                 }
             with open(self.data_file, 'w', encoding='utf-8') as f:
                 json.dump(save_data, f, ensure_ascii=False, indent=2)
@@ -106,6 +107,13 @@ class QQEmailVerifyPlugin(Star):
         self.whitelist_groups = {str(g).strip() for g in whitelist if str(g).strip()}
         self.blacklist_groups = {str(g).strip() for g in blacklist if str(g).strip()}
         self.kick_delay_seconds = int(self.config.get("kick_delay_seconds", 300))
+        
+        # 提醒配置
+        self.enable_timeout_reminder = bool(self.config.get("enable_timeout_reminder", True))
+        self.timeout_reminder_seconds = int(self.config.get("timeout_reminder_seconds", 60))
+        # 确保提醒时间小于总超时时间
+        if self.timeout_reminder_seconds >= self.kick_delay_seconds:
+            self.timeout_reminder_seconds = max(0, self.kick_delay_seconds - 60)
 
     def _is_group_enabled(self, group_id: str) -> bool:
         """检查群是否启用验证"""
@@ -186,6 +194,40 @@ class QQEmailVerifyPlugin(Star):
             delay = self.kick_delay_seconds
         
         try:
+            # 计算提醒时间点
+            reminder_time = 0
+            if self.enable_timeout_reminder and self.timeout_reminder_seconds > 0:
+                if delay > self.timeout_reminder_seconds:
+                    reminder_time = delay - self.timeout_reminder_seconds
+                    delay = self.timeout_reminder_seconds # 剩下的时间在提醒后等待
+                else:
+                    # 剩余时间不足以发送提醒，直接进入踢人倒计时
+                    pass
+
+            # 第一阶段：等待直到提醒时间
+            if reminder_time > 0:
+                await asyncio.sleep(reminder_time)
+                
+                # 发送提醒
+                if user_id in self.pending_verifications:
+                    info = self.pending_verifications[user_id]
+                    reminder_tmpl = self.config.get("timeout_reminder_msg", "{at_user} 您的验证即将超时...")
+                    reminder_msg = reminder_tmpl.replace("{at_user}", f"[CQ:at,qq={user_id}]").replace("{remaining}", str(self.timeout_reminder_seconds))
+                    
+                    client = self.context.get_platform("aiocqhttp").get_client()
+                    if client:
+                        try:
+                            # 尝试引用最初的欢迎消息
+                            welcome_msg_id = info.get("welcome_msg_id")
+                            if welcome_msg_id:
+                                # 构造引用消息
+                                reminder_msg = f"[CQ:reply,id={welcome_msg_id}]" + reminder_msg
+                            
+                            await client.call_action("send_group_msg", group_id=group_id, message=reminder_msg)
+                        except Exception as e:
+                            logger.warning(f"[QQEmailVerify] 发送超时提醒失败: {e}")
+
+            # 第二阶段：等待剩余时间（踢人倒计时）
             if delay > 0:
                 await asyncio.sleep(delay)
             
@@ -278,7 +320,18 @@ class QQEmailVerifyPlugin(Star):
             timeout_min = int(self.config.get("kick_delay_seconds", 300)) // 60
             welcome_tmpl = self.config.get("welcome_msg_template", "{at_user} 欢迎入群！验证码已发送至您的QQ邮箱...")
             welcome_msg = welcome_tmpl.replace("{at_user}", f"[CQ:at,qq={user_id}]").replace("{timeout}", str(timeout_min))
-            await event.bot.call_action("send_group_msg", group_id=group_id, message=welcome_msg)
+            ret = await event.bot.call_action("send_group_msg", group_id=group_id, message=welcome_msg)
+            
+            # 保存欢迎消息的 message_id 以便后续引用
+            welcome_msg_id = None
+            if ret and isinstance(ret, dict):
+                welcome_msg_id = ret.get("message_id")
+            elif ret and hasattr(ret, "message_id"):
+                 welcome_msg_id = ret.message_id
+            
+            if welcome_msg_id:
+                self.pending_verifications[user_id]["welcome_msg_id"] = welcome_msg_id
+                self._save_data() # 更新保存状态
             
         # 处理退群通知 (清理状态)
         elif post_type == "notice" and raw.get("notice_type") == "group_decrease":

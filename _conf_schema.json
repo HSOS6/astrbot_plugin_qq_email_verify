@@ -80,5 +80,20 @@
       "type": "string"
     },
     "default": []
+  },
+  "enable_timeout_reminder": {
+    "description": "是否开启超时提醒 (在验证即将超时前@用户)",
+    "type": "bool",
+    "default": true
+  },
+  "timeout_reminder_seconds": {
+    "description": "超时前多少秒发送提醒 (默认60秒)",
+    "type": "int",
+    "default": 60
+  },
+  "timeout_reminder_msg": {
+    "description": "超时提醒内容模板 ({at_user}为@用户占位符, {remaining}为剩余秒数)",
+    "type": "string",
+    "default": "{at_user} 您的验证即将超时，请尽快完成验证！剩余时间约 {remaining} 秒。"
   }
 }
