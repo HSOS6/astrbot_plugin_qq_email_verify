@@ -15,7 +15,7 @@ from astrbot.api.star import Context, Star, StarTools, register
 from astrbot.api import logger
 import astrbot.api.message_components as Comp
 
-@register("qq_email_verify", "5060ti个马力的6999", "入群验证但是邮箱", "1.3.0", "https://github.com/HSOS6/astrbot_plugin_qq_email_verify")
+@register("qq_email_verify", "星见雅", "入群验证但是邮箱", "1.3.0", "https://github.com/HSOS6/astrbot_plugin_qq_email_verify")
 class QQEmailVerifyPlugin(Star):
     def __init__(self, context: Context, config: Dict[str, Any]):
         super().__init__(context)
